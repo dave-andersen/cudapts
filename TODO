@@ -1,0 +1,3 @@
+- Add a controllable intensity
+- Build for Windows
+- Don't require makefile changes to support additional devices
