@@ -139,7 +139,7 @@ obj/%.o: intel/%.asm
 	yasm -f $(YASMOUTPUT) -o $@ $<
 
 obj/%.o: %.cu
-	nvcc -O3 -c -arch=sm_35 -o $@ $<
+	nvcc -O3 -c -arch=sm_30 -o $@ $<
 
 cudapts: $(OBJS:obj/%=obj/%)
 	$(CXX) $(xLDFLAGS) -o $@ $(LIBPATHS) $^ $(LIBS)
