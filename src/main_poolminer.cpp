@@ -15,7 +15,6 @@
 #include "main_poolminer.hpp"
 
 #if defined(__GNUG__) && !defined(__MINGW32__) && !defined(__MINGW64__)
-#include <sys/syscall.h>
 #include <sys/time.h> //depr?
 #include <sys/resource.h>
 #elif defined(__MINGW32__) || defined(__MINGW64__)
@@ -199,17 +198,6 @@ public:
 			}
 
 
-		{
-			//set low priority
-#if defined(__GNUG__) && !defined(__MINGW32__) && !defined(__MINGW64__)
-			pid_t tid = (pid_t) syscall (SYS_gettid);
-			setpriority(PRIO_PROCESS, tid, 1);
-#elif defined(__MINGW32__) || defined(__MINGW64__)
-			HANDLE th = _thread.native_handle();
-			if (!SetThreadPriority(th, THREAD_PRIORITY_LOWEST))
-				std::cerr << "failed to set thread priority to low" << std::endl;
-#endif
-		}
 		_master->wait_for_master();
 		std::cout << "[WORKER" << _id << "] GoGoGo!" << std::endl;
 		boost::this_thread::sleep(boost::posix_time::seconds(1));
