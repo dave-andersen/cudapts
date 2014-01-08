@@ -1,0 +1,132 @@
+# Copyright (c) 2009-2010 Satoshi Nakamoto
+# Distributed under the conditional MIT/X11 software license,
+# see the accompanying file COPYING.
+
+# Makefile for the MinGW g++ compiler/toolchain
+#
+# Assumes Berkeley DB, Boost, and OpenSSL have all been compiled and installed
+# into /usr/local (/usr/local/include, /usr/local/lib).
+#
+# If dependencies are somewhere else, run 'make DEPSDIR=/path/'
+#
+# Boost libraries are given wacky names that include the particular version of
+# boost you're using; set BOOST_SUFFIX appropriately.
+#
+# 'make clean' assumes it is running inside a MSYS shell, and uses 'rm'
+# to remove files.
+
+CXX ?= g++
+
+DEPSDIR?=/usr/local
+BOOST_SUFFIX?=-mgw47-mt-s-1_54
+
+INCLUDEPATHS= \
+ -I"$(CURDIR)" \
+ -I"$(DEPSDIR)/include"
+
+LIBPATHS= \
+ -L"$(DEPSDIR)/lib"
+
+LIBS= \
+ -l boost_system$(BOOST_SUFFIX) \
+ -l boost_filesystem$(BOOST_SUFFIX) \
+ -l boost_program_options$(BOOST_SUFFIX) \
+ -l boost_thread$(BOOST_SUFFIX) \
+ -l boost_chrono$(BOOST_SUFFIX)
+
+DEFS=-DWIN32 -D_WINDOWS -DBOOST_THREAD_USE_LIB -DBOOST_SPIRIT_THREADSAFE # -DBOOST_USE_WINDOWS_H
+DEBUGFLAGS= # -g
+CPPFLAGS=-mthreads -w -Wall -Wextra -Wformat -Wformat-security -Wno-unused-parameter $(DEBUGFLAGS) $(DEFS) $(INCLUDEPATHS)
+# enable: ASLR, DEP and large address aware
+LDFLAGS=-Wl,--dynamicbase -Wl,--nxcompat -static
+
+LIBS += -l kernel32 -l user32 -l gdi32 -l comdlg32 -l winspool -l winmm -l shell32 -l comctl32 -l ole32 -l oleaut32 -l uuid -l rpcrt4 -l advapi32 -l ws2_32 -l mswsock -l shlwapi
+
+OBJS= \
+	obj/cpuid.o \
+	obj/sha512_avx.o_asm \
+	obj/sha512_sse4.o_asm \
+	obj/sha512.o \
+	obj/sph_sha2.o \
+	obj/sph_sha2big.o \
+	obj/main_poolminer.o
+
+GENFLAGS_INTEL=-march=nocona -mmmx -msse -msse2 -msse3 # up to SSE3
+GENFLAGS_AMD=-march=athlon64 -mmmx -msse -msse2 # up to SSE2 + 3DNow
+SSE4FLAGS=-march=core2 -mmmx -msse -msse2 -msse3 -msse4 -msse4.1 -msse4.2 # up to SSE3
+AVXFLAGS_INTEL=-march=corei7-avx -mmmx -msse -msse2 -msse3 -msse4 -msse4.1 -msse4.2 -mavx
+AVXFLAGS_AMD=-march=bdver1 -mno-fma4 -mmmx -msse -msse2 -msse3 -msse4 -msse4.1 -msse4.2 -mavx # FMA4 not supported by 16h family (Jaguar)
+
+all: ptsminer_amd.exe ptsminer_intel.exe ptsminer_sse4.exe ptsminer_avx_amd.exe ptsminer_avx_intel.exe
+
+#
+# GENERIC (AMD)
+#
+obj/%.o_amd: %.cpp
+	$(CXX) -c -O2 $(GENFLAGS_AMD) $(CPPFLAGS) -o $@ $<
+obj/sph_%.o_amd: sph_%.c
+	$(CXX) -c -O1 $(GENFLAGS_AMD) $(DEBUGFLAGS) -fpermissive -o $@ $<
+obj/%.o_amd: %.c
+	$(CXX) -c -O2 $(GENFLAGS_AMD) $(DEBUGFLAGS) -fpermissive -o $@ $<
+
+#
+# GENERIC (INTEL)
+#
+obj/%.o_intel: %.cpp
+	$(CXX) -c -O2 $(GENFLAGS_INTEL) $(CPPFLAGS) -o $@ $<
+obj/sph_%.o_intel: sph_%.c
+	$(CXX) -c -O1 $(GENFLAGS_INTEL) $(DEBUGFLAGS) -fpermissive -o $@ $<
+obj/%.o_intel: %.c
+	$(CXX) -c -O2 $(GENFLAGS_INTEL) $(DEBUGFLAGS) -fpermissive -o $@ $<	
+
+#
+# SSE4
+#
+obj/%.o_sse4: %.cpp
+	$(CXX) -c -O2 $(SSE4FLAGS) $(CPPFLAGS) -o $@ $<
+obj/sph_%.o_sse4: sph_%.c
+	$(CXX) -c -O1 $(SSE4FLAGS) $(DEBUGFLAGS) -fpermissive -o $@ $<
+obj/%.o_sse4: %.c
+	$(CXX) -c -O2 $(SSE4FLAGS) $(DEBUGFLAGS) -fpermissive -o $@ $<
+	
+#
+# AVX (AMD)
+#
+obj/%.o_avx_amd: %.cpp
+	$(CXX) -c -O2 $(AVXFLAGS_AMD) $(CPPFLAGS) -o $@ $<
+obj/sph_%.o_avx_amd: sph_%.c
+	$(CXX) -c -O1 $(AVXFLAGS_AMD) $(DEBUGFLAGS) -fpermissive -o $@ $<
+obj/%.o_avx_amd: %.c
+	$(CXX) -c -O2 $(AVXFLAGS_AMD) $(DEBUGFLAGS) -fpermissive -o $@ $<
+
+#
+# AVX (INTEL)
+#
+obj/%.o_avx_intel: %.cpp
+	$(CXX) -c -O2 $(AVXFLAGS_INTEL) $(CPPFLAGS) -o $@ $<
+obj/sph_%.o_avx_intel: sph_%.c
+	$(CXX) -c -O1 $(AVXFLAGS_INTEL) $(DEBUGFLAGS) -fpermissive -o $@ $<
+obj/%.o_avx_intel: %.c
+	$(CXX) -c -O2 $(AVXFLAGS_INTEL) $(DEBUGFLAGS) -fpermissive -o $@ $<
+
+#
+# ASM
+#
+obj/%.o_asm: intel/%.asm
+	yasm -f win64 -D WINABI -o $@ $<
+
+ptsminer_amd.exe: $(OBJS:obj/%.o=obj/%.o_amd)
+	$(CXX) $(CPPFLAGS) $(LDFLAGS) -o $@ $(LIBPATHS) $^ $(LIBS)
+ptsminer_intel.exe: $(OBJS:obj/%.o=obj/%.o_intel)
+	$(CXX) $(CPPFLAGS) $(LDFLAGS) -o $@ $(LIBPATHS) $^ $(LIBS)
+ptsminer_sse4.exe: $(OBJS:obj/%.o=obj/%.o_sse4)
+	$(CXX) $(CPPFLAGS) $(LDFLAGS) -o $@ $(LIBPATHS) $^ $(LIBS)
+ptsminer_avx_amd.exe: $(OBJS:obj/%.o=obj/%.o_avx_amd)
+	$(CXX) $(CPPFLAGS) $(LDFLAGS) -o $@ $(LIBPATHS) $^ $(LIBS)
+ptsminer_avx_intel.exe: $(OBJS:obj/%.o=obj/%.o_avx_intel)
+	$(CXX) $(CPPFLAGS) $(LDFLAGS) -o $@ $(LIBPATHS) $^ $(LIBS)
+
+clean:
+	rm -f ptsminer*.exe
+	rm -f obj/*.o
+	rm -f obj/*.o_*

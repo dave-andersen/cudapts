@@ -1,0 +1,149 @@
+# Copyright (c) 2009-2010 Satoshi Nakamoto
+# Distributed under the MIT/X11 software license, see the accompanying
+# file COPYING or http://www.opensource.org/licenses/mit-license.php.
+
+linuxdist=$(shell ./osfinder.sh)
+
+LINK:=$(CXX)
+
+DEFS=-DBOOST_SPIRIT_THREADSAFE -D_FILE_OFFSET_BITS=64
+
+DEFS += $(addprefix -I,$(CURDIR) $(CURDIR)/obj $(BOOST_INCLUDE_PATH))
+LIBS = $(addprefix -L,$(BOOST_LIB_PATH) /usr/local/cuda-5.5/lib64)
+
+UNAME_M := $(shell uname -m)
+ifeq ($(UNAME_M),x86_64)
+	YASMOUTPUT = elf64
+else
+	YASMOUTPUT = elf32
+endif
+
+LMODE = dynamic
+LMODE2 = dynamic
+ifdef STATIC
+	LMODE = static
+	ifeq (${STATIC}, all)
+		LMODE2 = static
+	endif
+endif
+
+# No boost_chrono and append '-mt' to boost_thread for Redhat family
+ifeq ($(linuxdist),redhat)
+	BOOSTLIBOPTS=	-l boost_system$(BOOST_LIB_SUFFIX) \
+	-l boost_filesystem$(BOOST_LIB_SUFFIX) \
+	-l boost_program_options$(BOOST_LIB_SUFFIX) \
+	-l boost_thread-mt$(BOOST_LIB_SUFFIX)
+endif
+
+# if Debian 6, link without lib_chrono, else use everything
+ifeq ($(linuxdist),debian)
+debian_version = $(shell cat /etc/debian_version | sed 's/\..*$$//g')
+ifeq ($(debian_version),6)
+	BOOSTLIBOPTS=	-l boost_system$(BOOST_LIB_SUFFIX) \
+	-l boost_filesystem$(BOOST_LIB_SUFFIX) \
+	-l boost_program_options$(BOOST_LIB_SUFFIX) \
+	-l boost_thread$(BOOST_LIB_SUFFIX)
+else	# debian 7.x and all others until further notice
+	BOOSTLIBOPTS=	-l boost_system$(BOOST_LIB_SUFFIX) \
+	-l boost_filesystem$(BOOST_LIB_SUFFIX) \
+	-l boost_program_options$(BOOST_LIB_SUFFIX) \
+	-l boost_thread$(BOOST_LIB_SUFFIX) \
+	-l boost_chrono$(BOOST_LIB_SUFFIX)
+endif
+endif
+
+ifeq ($(linuxdist),unknown)
+	BOOSTLIBOPTS=	-l boost_system$(BOOST_LIB_SUFFIX) \
+	-l boost_filesystem$(BOOST_LIB_SUFFIX) \
+	-l boost_program_options$(BOOST_LIB_SUFFIX) \
+	-l boost_thread$(BOOST_LIB_SUFFIX) \
+	-l boost_chrono$(BOOST_LIB_SUFFIX)
+endif
+
+# for boost 1.37, add -mt to the boost libraries
+LIBS += \
+ -Wl,-B$(LMODE) \
+ $(BOOSTLIBOPTS)
+
+LIBS+= \
+ -Wl,-B$(LMODE2) \
+   -l z \
+   -l dl \
+   -l cudart \
+   -l pthread
+
+# Hardening
+# Make some classes of vulnerabilities unexploitable in case one is discovered.
+#
+    # This is a workaround for Ubuntu bug #691722, the default -fstack-protector causes
+    # -fstack-protector-all to be ignored unless -fno-stack-protector is used first.
+    # see: https://bugs.launchpad.net/ubuntu/+source/gcc-4.5/+bug/691722
+    HARDENING=-fno-stack-protector
+
+    # Stack Canaries
+    # Put numbers at the beginning of each stack frame and check that they are the same.
+    # If a stack buffer if overflowed, it writes over the canary number and then on return
+    # when that number is checked, it won't be the same and the program will exit with
+    # a "Stack smashing detected" error instead of being exploited.
+    HARDENING+=-fstack-protector-all -Wstack-protector
+
+    # Make some important things such as the global offset table read only as soon as
+    # the dynamic linker is finished building it. This will prevent overwriting of addresses
+    # which would later be jumped to.
+    LDHARDENING+=-Wl,-z,relro -Wl,-z,now
+
+    # Build position independent code to take advantage of Address Space Layout Randomization
+    # offered by some kernels.
+    # see doc/build-unix.txt for more information.
+    ifdef PIE
+        HARDENING+=-fPIE
+        LDHARDENING+=-pie
+    endif
+
+    # -D_FORTIFY_SOURCE=2 does some checking for potentially exploitable code patterns in
+    # the source such overflowing a statically defined buffer.
+    HARDENING+=-D_FORTIFY_SOURCE=2
+#
+
+DEBUGFLAGS= # -ggdb -g3 -fno-rounding-math
+
+# CXXFLAGS can be specified on the make command line, so we use xCXXFLAGS that only
+# adds some defaults in front. Unfortunately, CXXFLAGS=... $(CXXFLAGS) does not work.
+#-Wall -Wextra -Wformat -Wformat-security -Wno-unused-parameter
+xCOMPILEFLAGS=-pthread $(DEFS) $(HARDENING) $(CXXFLAGS)
+
+# LDFLAGS can be specified on the make command line, so we use xLDFLAGS that only
+# adds some defaults in front. Unfortunately, LDFLAGS=... $(LDFLAGS) does not work.
+xLDFLAGS=$(LDHARDENING) $(LDFLAGS)
+
+OBJS= \
+	obj/cpuid.o \
+	obj/sha512_avx.o \
+	obj/sha512_sse4.o \
+	obj/sha512.o \
+	obj/sph_sha2.o \
+	obj/sph_sha2big.o \
+	obj/gpuhash.o \
+	obj/main_poolminer.o
+
+all: cudapts
+
+obj/%.o: %.cpp
+	$(CXX) -c -O2 $(DEBUGFLAGS) $(xCOMPILEFLAGS) -o $@ $<
+obj/sph_%.o: sph_%.c
+	$(CXX) -c -O1 $(DEBUGFLAGS) -fpermissive -o $@ $<
+obj/%.o: %.c
+	$(CXX) -c -O2 $(DEBUGFLAGS) -fpermissive -o $@ $<
+
+obj/%.o: intel/%.asm
+	yasm -f $(YASMOUTPUT) -o $@ $<
+
+obj/%.o: %.cu
+	nvcc -O3 -c -arch=sm_35 -o $@ $<
+
+cudapts: $(OBJS:obj/%=obj/%)
+	$(CXX) $(xLDFLAGS) -o $@ $(LIBPATHS) $^ $(LIBS)
+
+clean:
+	rm -f cudapts
+	rm -f obj/*.o
