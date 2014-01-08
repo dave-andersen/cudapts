@@ -200,8 +200,12 @@ public:
 			void *addr;
 			addr = mmap(0, bigbufsize, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_HUGETLB, 0, 0);
 			if (addr == MAP_FAILED) {
-			  perror("Could not mmap hugepage, reverting to malloc");
+			  //perror("Could not mmap hugepage, reverting to malloc");
 			  _collisionMap = (uint32_t*)malloc(sizeof(uint32_t)*(1 << COLLISION_TABLE_BITS));
+			  if (!_collisionMap) {
+			    perror("Could not allocate collision map. Exiting");
+			    exit(-1);
+			  }
 			} else {
 			  _collisionMap = (uint32_t *)addr;
 			}
