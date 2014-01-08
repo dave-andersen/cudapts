@@ -49,3 +49,8 @@ as in, for Linux,
 
 I don't know if it needs a specific CUDA revision, but I've only tested
 with CUDA 5.5.
+
+Donations:
+  PTS:  Pr8cnhz5eDsUegBZD4VZmGDARcKaozWbBc
+  BTC:  17sb5mcCnnt4xH3eEkVi6kHvhzQRjPRBtS
+ 

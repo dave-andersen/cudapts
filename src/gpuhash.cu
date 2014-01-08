@@ -1,3 +1,9 @@
+/*
+ * Copyright (C) 2014 David G. Andersen
+ * This code is licensed under the Apache 2.0 license and may be used or re-used
+ * in accordance with its terms.
+ */
+
 #include <inttypes.h>
 #include <stdio.h>
 #include "gpuhash.h"
