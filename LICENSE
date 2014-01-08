@@ -1,0 +1,5 @@
+The code in gpuhash.cu is released under the Apache 2 license,
+except for specific code taken from the public domain release of
+John the Ripper's SHA512 hashing code.
+
+The ptsminer code is covered under its original copyright.

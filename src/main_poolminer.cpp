@@ -168,20 +168,7 @@ public:
 	
 	template<SHAMODE shamode>
 	void mineloop_start() {
-		switch (COLLISION_TABLE_BITS) {
-		  case 20: mineloop<(1<<20),(0xFFFFFFFF<<(32-(32-20))),20,shamode>(); break;
-		  case 21: mineloop<(1<<21),(0xFFFFFFFF<<(32-(32-21))),21,shamode>(); break;
-		  case 22: mineloop<(1<<22),(0xFFFFFFFF<<(32-(32-22))),22,shamode>(); break;
-		  case 23: mineloop<(1<<23),(0xFFFFFFFF<<(32-(32-23))),23,shamode>(); break;
-			case 24: mineloop<(1<<24),(0xFFFFFFFF<<(32-(32-24))),24,shamode>(); break;
-			case 25: mineloop<(1<<25),(0xFFFFFFFF<<(32-(32-25))),25,shamode>(); break;
-			case 26: mineloop<(1<<26),(0xFFFFFFFF<<(32-(32-26))),26,shamode>(); break;
-			case 27: mineloop<(1<<27),(0xFFFFFFFF<<(32-(32-27))),27,shamode>(); break;
-			case 28: mineloop<(1<<28),(0xFFFFFFFF<<(32-(32-28))),28,shamode>(); break;
-			case 29: mineloop<(1<<29),(0xFFFFFFFF<<(32-(32-29))),29,shamode>(); break;
-			case 30: mineloop<(1<<30),(0xFFFFFFFF<<(32-(32-30))),30,shamode>(); break;
-			default: break;
-		}
+	  mineloop<(1<<21),(0xFFFFFFFF<<(32-(32-21))),21,shamode>();
 	}
 
 	void run() {
@@ -202,14 +189,14 @@ public:
 			if (addr == MAP_FAILED) {
 			  //perror("Could not mmap hugepage, reverting to malloc");
 			  _collisionMap = (uint32_t*)malloc(sizeof(uint32_t)*(1 << COLLISION_TABLE_BITS));
-			  if (!_collisionMap) {
-			    perror("Could not allocate collision map. Exiting");
-			    exit(-1);
-			  }
 			} else {
 			  _collisionMap = (uint32_t *)addr;
 			}
 #endif
+			if (!_collisionMap) {
+			  perror("Could not allocate collision map. Exiting");
+			  exit(-1);
+			}
 
 
 		{
@@ -527,28 +514,17 @@ void ctrl_handler(int signum) {
 #endif
 
 void print_help(const char* _exec) {
-	std::cerr << "usage: " << _exec << " <payout-address> <threads-to-use> [memory-option] [mode]" << std::endl;
+	std::cerr << "usage: " << _exec << " <payout-address> [cudaDevice] [shamode]" << std::endl;
 	std::cerr << std::endl;
-	std::cerr << "memory-option: integer value - memory usage" << std::endl;
-	std::cerr << "\t\t20 -->    4 MB per thread (not recommended)" << std::endl;
-	std::cerr << "\t\t21 -->    8 MB per thread (not recommended)" << std::endl;
-	std::cerr << "\t\t22 -->   16 MB per thread (not recommended)" << std::endl;
-	std::cerr << "\t\t23 -->   32 MB per thread (not recommended)" << std::endl;
-	std::cerr << "\t\t24 -->   64 MB per thread (not recommended)" << std::endl;
-	std::cerr << "\t\t25 -->  128 MB per thread" << std::endl;
-	std::cerr << "\t\t26 -->  256 MB per thread" << std::endl;
-	std::cerr << "\t\t27 -->  512 MB per thread (default)" << std::endl;
-	std::cerr << "\t\t28 --> 1024 MB per thread" << std::endl;
-	std::cerr << "\t\t29 --> 2048 MB per thread" << std::endl;
-	std::cerr << "\t\t30 --> 4096 MB per thread" << std::endl;
-	std::cerr << std::endl;
-	std::cerr << "mode: string - mining implementation" << std::endl;
+	std::cerr << "cudaDevice:  0, 1, 2, ... up to how many GPUs you have" << std::endl;
+	std::cerr << "shamode: string - mining implementation" << std::endl;
+	std::cerr << "\t\tOnly change if it doesn't run.  Not speed important." << std::endl;
 	std::cerr << "\t\tavx --> use AVX (Intel optimized)" << std::endl;
 	std::cerr << "\t\tsse4 --> use SSE4 (Intel optimized)" << std::endl;
 	std::cerr << "\t\tsph --> use SPHLIB" << std::endl;
 	std::cerr << std::endl;
 	std::cerr << "example:" << std::endl;
-	std::cerr << "> " << _exec << " PbfspbvSWxYqrp3DpRH7bsrmEqzY3418Ap 4 25 sse4" << std::endl;
+	std::cerr << "> " << _exec << " Pr8cnhz5eDsUegBZD4VZmGDARcKaozWbBc 0" << std::endl;
 }
 
 /*********************************
@@ -567,7 +543,7 @@ int main(int argc, char **argv)
 	std::cout << "*** press CTRL+C to exit" << std::endl;
 	std::cout << "********************************************" << std::endl;
 	
-	if (argc < 3 || argc > 5)
+	if (argc < 2 || argc > 4)
 	{
 		print_help(argv[0]);
 		return EXIT_FAILURE;
@@ -575,7 +551,7 @@ int main(int argc, char **argv)
 
 	use_avxsse4 = false;
 	if (argc == 5) {
-		std::string mode_param(argv[4]);
+		std::string mode_param(argv[3]);
 		if (mode_param == "avx") {
 			Init_SHA512_avx();
 			use_avxsse4 = true;
@@ -636,21 +612,12 @@ int main(int argc, char **argv)
 	socket_to_server = NULL;
 	thread_num_max = 1; //GetArg("-genproclimit", 1); // what about boost's hardware_concurrency() ?
 	gpu_device_id = atoi(argv[2]); 
-	if (argc == 4 || argc == 5)
-		COLLISION_TABLE_BITS = atoi(argv[3]);
-	else
-		COLLISION_TABLE_BITS = 27;
+	COLLISION_TABLE_BITS = 21;
 	fee_to_pay = 0; //GetArg("-poolfee", 3);
 	miner_id = 0; //GetArg("-minerid", 0);
 	pool_username = argv[1]; //GetArg("-pooluser", "");
 	pool_password = "blabla"; //GetArg("-poolpassword", "");
 	
-	if (COLLISION_TABLE_BITS < 20 || COLLISION_TABLE_BITS > 30)
-	{
-		std::cerr << "unsupported memory option, choose a value between 20 and 31" << std::endl;
-		return EXIT_FAILURE;
-	}
-
 	if (thread_num_max == 0 || thread_num_max > MAX_THREADS)
 	{
 		std::cerr << "usage: " << "current maximum supported number of threads = " << MAX_THREADS << std::endl;
