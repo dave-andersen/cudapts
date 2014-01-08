@@ -3,8 +3,10 @@ CudaPTS - a GPU miner for Protoshares
 
 
 This is a protoshares pool miner that runs on Nvidia GPUs.
-It currently targets newer Kepler (GK104 and GK110) devices, but
-could be modified to support Fermi (GF104) devices.  It is derived
+It has been confirmed to work on a lot of Kepler (GK110 and GK104)
+devices, as well as at least one GTX 570 (compute capability 2).
+
+This code is derived
 from ptsminer, which is in turn
 based on xolokrams's [primecoin miner](https://github.com/thbaumbach/primecoin).
 and Invictus Innovations [protoshares client](https://github.com/InvictusInnovations/ProtoShares).
@@ -47,3 +49,8 @@ as in, for Linux,
 
 I don't know if it needs a specific CUDA revision, but I've only tested
 with CUDA 5.5.
+
+Donations:
+  PTS:  Pr8cnhz5eDsUegBZD4VZmGDARcKaozWbBc
+  BTC:  17sb5mcCnnt4xH3eEkVi6kHvhzQRjPRBtS
+ 
