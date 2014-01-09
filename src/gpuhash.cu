@@ -11,10 +11,10 @@
 //#include <thrust/sort.h>
 
 __device__ void sha512_block(uint64_t H[8], const uint64_t data[5]);
-__global__ void search_sha512_kernel(const __restrict uint64_t *dev_data, __restrict uint64_t *dev_hashes, __restrict uint32_t *dev_countbits);
-__global__ void filter_sha512_kernel(__restrict uint64_t *dev_hashes, __restrict uint32_t *dev_countbits);
-__global__ void filter_and_rewrite_sha512_kernel(__restrict uint64_t *dev_hashes, __restrict uint32_t *dev_countbits, __restrict uint64_t *dev_results);
-__global__ void populate_filter_kernel(__restrict uint64_t *dev_hashes, __restrict uint32_t *dev_countbits);
+__global__ void search_sha512_kernel(const __restrict__ uint64_t *dev_data, __restrict__ uint64_t *dev_hashes, __restrict__ uint32_t *dev_countbits);
+__global__ void filter_sha512_kernel(__restrict__ uint64_t *dev_hashes, const __restrict__ uint32_t *dev_countbits);
+__global__ void filter_and_rewrite_sha512_kernel(__restrict__ uint64_t *dev_hashes, const __restrict__ uint32_t *dev_countbits, __restrict__ uint64_t *dev_results);
+__global__ void populate_filter_kernel(__restrict__ uint64_t *dev_hashes, __restrict__ uint32_t *dev_countbits);
 
 
 /* Empty constructor, please call Initialize */
@@ -132,7 +132,7 @@ __constant__ const uint64_t iv512[SHA512_HASH_WORDS] = {
 };
 
 __device__
-void set_or_double(__restrict uint32_t *countbits, uint32_t whichbit) {
+void set_or_double(__restrict__ uint32_t *countbits, uint32_t whichbit) {
   /* Kind of like a saturating add of two bit values.
    * First set is 00 -> 01.  Second set is 01 -> 11
    * Beyond that stays 11
@@ -149,13 +149,13 @@ void set_or_double(__restrict uint32_t *countbits, uint32_t whichbit) {
 }
 
 __device__ inline
-void add_to_filter(__restrict uint32_t *countbits, const uint64_t hash) {
+void add_to_filter(__restrict__ uint32_t *countbits, const uint64_t hash) {
   uint32_t whichbit = (uint32_t(hash>>14) & ((1UL<<COUNTBITS_SLOTS_POWER)-1));
   set_or_double(countbits, whichbit);
 }
 
 __device__ inline
-bool is_in_filter_twice(__restrict uint32_t *countbits, const uint64_t hash) {
+bool is_in_filter_twice(const __restrict__ uint32_t *countbits, const uint64_t hash) {
   uint32_t whichbit = (uint32_t(hash>>14) & ((1UL<<COUNTBITS_SLOTS_POWER)-1));
   uint32_t cbits = countbits[whichbit/16];
   
@@ -164,7 +164,7 @@ bool is_in_filter_twice(__restrict uint32_t *countbits, const uint64_t hash) {
 
 
 __global__
-void search_sha512_kernel(const __restrict uint64_t *dev_data, __restrict uint64_t *dev_hashes, __restrict uint32_t *dev_countbits) {
+void search_sha512_kernel(const __restrict__ uint64_t *dev_data, __restrict__ uint64_t *dev_hashes, __restrict__ uint32_t *dev_countbits) {
   uint64_t H[8];
   uint64_t D[5];
   uint32_t spot = (((gridDim.x * blockIdx.y) + blockIdx.x)* blockDim.x) + threadIdx.x;
@@ -184,7 +184,7 @@ void search_sha512_kernel(const __restrict uint64_t *dev_data, __restrict uint64
 }
 
 __global__
-void filter_sha512_kernel(__restrict uint64_t *dev_hashes, __restrict uint32_t *dev_countbits) {
+void filter_sha512_kernel(__restrict__ uint64_t *dev_hashes, const __restrict__ uint32_t *dev_countbits) {
   uint32_t spot = (((gridDim.x * blockIdx.y) + blockIdx.x)* blockDim.x) + threadIdx.x;
   for (int i = 0; i < 8; i++) {
     uint64_t myword = dev_hashes[i*POOLSIZE+spot];
@@ -198,7 +198,7 @@ void filter_sha512_kernel(__restrict uint64_t *dev_hashes, __restrict uint32_t *
 
 
 __global__
-void populate_filter_kernel(__restrict uint64_t *dev_hashes, __restrict uint32_t *dev_countbits) {
+void populate_filter_kernel(__restrict__ uint64_t *dev_hashes, __restrict__ uint32_t *dev_countbits) {
   uint32_t spot = (((gridDim.x * blockIdx.y) + blockIdx.x)* blockDim.x) + threadIdx.x;
   for (int i = 0; i < 8; i++) {
     uint64_t myword = dev_hashes[i*POOLSIZE+spot];
@@ -209,7 +209,7 @@ void populate_filter_kernel(__restrict uint64_t *dev_hashes, __restrict uint32_t
 }
 
 __global__
-void filter_and_rewrite_sha512_kernel(__restrict uint64_t *dev_hashes, __restrict uint32_t *dev_countbits, __restrict uint64_t *dev_results) {
+void filter_and_rewrite_sha512_kernel(__restrict__ uint64_t *dev_hashes, const __restrict__ uint32_t *dev_countbits, __restrict__ uint64_t *dev_results) {
   uint32_t spot = (((gridDim.x * blockIdx.y) + blockIdx.x)* blockDim.x) + threadIdx.x;
   for (int i = 0; i < 8; i++) {
     uint64_t myword = dev_hashes[i*POOLSIZE+spot];
