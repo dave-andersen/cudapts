@@ -16,11 +16,11 @@ It is hardcoded to work with beeeeer because that's the source I started
 with.
 
 To run, run:
-   cudapts <payment-address> [cudaDevice] [shamode]
+    cudapts <payment-address> [cudaDevice] [shamode]
 
 For most systems, it should work to simply run:
 
-   cudapts <payment-address>
+    cudapts <payment-address>
 
 But if you have multiple GPUs or it doesn't work, you might have to
 specify cudaDevice or shamode.
