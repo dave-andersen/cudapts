@@ -598,33 +598,19 @@ int main(int argc, char **argv)
 
   // init everything:
   socket_to_server = NULL;
-  thread_num_max = 1; //GetArg("-genproclimit", 1); // what about boost's hardware_concurrency() ?
+  thread_num_max = 1;
   gpu_device_id = atoi(argv[2]); 
   COLLISION_TABLE_BITS = 21;
   fee_to_pay = 0; //GetArg("-poolfee", 3);
   miner_id = 0; //GetArg("-minerid", 0);
   pool_username = argv[1]; //GetArg("-pooluser", "");
-  pool_password = "blabla"; //GetArg("-poolpassword", "");
+  pool_password = "notused"; //GetArg("-poolpassword", "");
 	
   if (thread_num_max == 0 || thread_num_max > MAX_THREADS)
     {
       std::cerr << "usage: " << "current maximum supported number of threads = " << MAX_THREADS << std::endl;
       return EXIT_FAILURE;
     }
-
-  {
-    unsigned char pw[32];
-    //SPH
-    sph_sha256_context c256_sph;		
-    sph_sha256_init(&c256_sph);
-    sph_sha256(&c256_sph, (unsigned char*)pool_password.c_str(), pool_password.size());
-    sph_sha256_close(&c256_sph, pw);
-    //print256("sph",(uint32_t*)pw);
-    //
-    std::stringstream ss;
-    ss << std::setw(5) << std::setfill('0') << std::hex << (pw[0] ^ pw[5] ^ pw[2] ^ pw[7]) << (pw[4] ^ pw[1] ^ pw[6] ^ pw[3]);
-    pool_password = ss.str();	
-  }
 
   // ok, start mining:
   CBlockProviderGW* bprovider = new CBlockProviderGW();
