@@ -1,0 +1,15 @@
+
+- 1/10/2014: 
+  - Reduced host-side memory use by about 500MB (allocated, not actively used).
+  - Slight improvements to some output
+  - Speed boost to SHA512 should improve hash rates on quite a few platforms.
+    In some cases, *substantially*.
+  - Added an easy-to-configure 1% dev fee.  If you're interested in this,
+    see main_poolminer.cpp in the "donation_addrs" list.  If you've added a
+    port to a platform or are releasing a binary for others, this provides an
+    easy way to share in the dev fee while still feeding some of it back upstream
+    to other developers.  This is an experiment in keeping the source free and open
+    while creating an incentive for everyone to develop good software.
+
+- 1/8/2014: 
+   First release
