@@ -4,6 +4,9 @@ public:
   int Initialize();
   int ComputeHashes(uint64_t data[16], uint64_t H[8]);
   ~GPUHasher();
+
+  static const int N_RESULTS = 32768;
+
  private:
   int device_id;
   uint64_t *dev_data;

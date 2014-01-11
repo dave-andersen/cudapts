@@ -22,8 +22,8 @@
 #endif
 
 #define VERSION_MAJOR 0
-#define VERSION_MINOR 7
-#define VERSION_EXT "RC2 <experimental>"
+#define VERSION_MINOR 8
+#define VERSION_EXT "GPU0.2 <experimental>"
 
 #define MAX_THREADS 64
 
@@ -171,13 +171,13 @@ public:
   }
 
   void run() {
-    std::cout << "[WORKER" << _id << "] Hello, World!" << std::endl;
+    std::cout << "[WORKER" << _id << "] starting" << std::endl;
 
     /* Ensure that thread is pinned to its allocation */
-    _hashblock = (uint64_t *)malloc(sizeof(uint64_t) * (1<<26));
+    _hashblock = (uint64_t *)malloc(sizeof(uint64_t) * GPUHasher::N_RESULTS);
     _gpu = new GPUHasher(gpu_device_id);
     _gpu->Initialize();
- 
+
 #ifndef MAP_HUGETLB
     _collisionMap = (uint32_t*)malloc(sizeof(uint32_t)*(1 << COLLISION_TABLE_BITS));
 #else

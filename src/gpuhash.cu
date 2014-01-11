@@ -64,9 +64,8 @@ int GPUHasher::Initialize() {
     return -1;
   }
 
-#define N_RESULTS 32768
   /* Results holds any maybe-colliding keys */
-  error = cudaMalloc((void **)&dev_results, sizeof(uint64_t)*N_RESULTS);
+  error = cudaMalloc((void **)&dev_results, sizeof(uint64_t)*GPUHasher::N_RESULTS);
   if (error != cudaSuccess) {
     fprintf(stderr, "Could not malloc dev_data (%d)\n", error);
     exit(-1);
@@ -216,7 +215,7 @@ void filter_and_rewrite_sha512_kernel(__restrict__ uint64_t *dev_hashes, const _
 
     if (myword && is_in_filter_twice(dev_countbits, (myword>>18))) {
       myword = ((myword & (~(((1ULL<<26) - 1)))) | (spot*8+i));
-      uint32_t result_slot = atomicInc((uint32_t *)dev_results, N_RESULTS);
+      uint32_t result_slot = atomicInc((uint32_t *)dev_results, GPUHasher::N_RESULTS);
       dev_results[result_slot+1] = myword;
     }
   }
