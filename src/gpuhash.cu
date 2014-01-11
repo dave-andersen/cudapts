@@ -327,6 +327,7 @@ __device__ void sha512_block(uint64_t H[8], const uint64_t data[5])
 	/* dga: Parts of this can be optimized for the first iteration
 	 * to account for all of the fixed input values */
 
+#pragma unroll 16
 	for (int i = 0; i < 16; i++) {
 		t1 = k[i] + w[i] + h + Sigma1(e) + Ch(e, f, g);
 		t2 = Maj(a, b, c) + Sigma0(a);
@@ -341,6 +342,7 @@ __device__ void sha512_block(uint64_t H[8], const uint64_t data[5])
 		a = t1 + t2;
 	}
 
+#pragma unroll
 	for (int i = 16; i < 80; i++) {
 
 
@@ -368,6 +370,7 @@ __device__ void sha512_block(uint64_t H[8], const uint64_t data[5])
 	H[6] = iv512[6] + g;
 	H[7] = iv512[7] + h;
 
+#pragma unroll
 	for (int i = 0; i < 8; i++) {
 	  H[i] = (SWAP64(H[i]));
 	}
