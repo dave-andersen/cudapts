@@ -62,8 +62,6 @@ CFLAGS += -Wall -Wextra -Wformat -Wformat-security -Wno-unused-parameter \
 
 OBJS= \
 	obj/cpuid.o \
-	obj/sha512_avx.o \
-	obj/sha512_sse4.o \
 	obj/sha512.o \
 	obj/sph_sha2.o \
 	obj/sph_sha2big.o \
@@ -78,9 +76,6 @@ obj/sph_%.o: sph_%.c
 	$(CXX) $(CFLAGS) -c -O1 $(DEBUGFLAGS) -fpermissive -o $@ $<
 obj/%.o: %.c
 	$(CXX) $(CFLAGS) -c -O2 $(DEBUGFLAGS) -fpermissive -o $@ $<
-
-obj/%.o: intel/%.asm
-	yasm -f macho64 -o $@ $<
 
 obj/%.so: %.cu
 	nvcc -arch=sm_30 $(NVFLAGS) -shared -o $@ $<

@@ -85,6 +85,8 @@ void SHA512_Final (SHA512_Context *sc, uint8_t hash[SHA512_HASH_SIZE]);
 void SHA512_Mid_Update (SHA512_Context *sc, const void *vdata, size_t len);
 void SHA512_Final_Shift (SHA512_Context *sc, uint32_t pokeval, uint8_t hash[SHA512_HASH_SIZE]);
 void SHA512_PreFinal (SHA512_Context *sc);
+void
+SHA512_Update_Simple (SHA512_Context *sc, const void *vdata, size_t len);
 
 /*
  * Intel's optimized SHA512 core routines. These routines are described in an

@@ -140,7 +140,7 @@ class CWorkerThread { // worker=miner
 public:
 
   CWorkerThread(CMasterThreadStub *master, unsigned int id, CBlockProviderGW *bprovider)
-    : _collisionMap(NULL), _working_lock(NULL), _id(id), _master(master), _bprovider(bprovider), _thread(&CWorkerThread::run, this) {
+    : _working_lock(NULL), _id(id), _master(master), _bprovider(bprovider), _thread(&CWorkerThread::run, this) {
 
   }
 		
@@ -159,7 +159,7 @@ public:
 	++blockcnt;
       }
       if (thrblock != NULL) {
-	protoshares_process_512<COLLISION_TABLE_SIZE,COLLISION_KEY_MASK,CTABLE_BITS,shamode>(thrblock, _collisionMap, _bprovider, _id, _gpu, _hashblock);
+	protoshares_process_512<COLLISION_TABLE_SIZE,COLLISION_KEY_MASK,CTABLE_BITS,shamode>(thrblock, _bprovider, _id, _gpu, _hashblock);
       } else
 	boost::this_thread::sleep(boost::posix_time::seconds(1));
     }
@@ -178,26 +178,6 @@ public:
     _gpu = new GPUHasher(gpu_device_id);
     _gpu->Initialize();
 
-#ifndef MAP_HUGETLB
-    _collisionMap = (uint32_t*)malloc(sizeof(uint32_t)*(1 << COLLISION_TABLE_BITS));
-#else
-
-    size_t bigbufsize = sizeof(uint32_t)*(1 << COLLISION_TABLE_BITS);
-    void *addr;
-    addr = mmap(0, bigbufsize, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_HUGETLB, 0, 0);
-    if (addr == MAP_FAILED) {
-      //perror("Could not mmap hugepage, reverting to malloc");
-      _collisionMap = (uint32_t*)malloc(sizeof(uint32_t)*(1 << COLLISION_TABLE_BITS));
-    } else {
-      _collisionMap = (uint32_t *)addr;
-    }
-#endif
-    if (!_collisionMap) {
-      perror("Could not allocate collision map. Exiting");
-      exit(-1);
-    }
-
-
     _master->wait_for_master();
     std::cout << "[WORKER" << _id << "] GoGoGo!" << std::endl;
     boost::this_thread::sleep(boost::posix_time::seconds(1));
@@ -213,7 +193,6 @@ public:
   }
 
 protected:
-  uint32_t* _collisionMap;
   boost::shared_lock<boost::shared_mutex> *_working_lock;
   unsigned int _id;
   CMasterThreadStub *_master;
@@ -590,52 +569,6 @@ int main(int argc, char **argv)
       print_help(argv[0]);
       return EXIT_FAILURE;
     }
-
-  use_avxsse4 = false;
-  if (argc == 5) {
-    std::string mode_param(argv[3]);
-    if (mode_param == "avx") {
-      Init_SHA512_avx();
-      use_avxsse4 = true;
-      std::cout << "using AVX" << std::endl;
-    } else if (mode_param == "sse4") {
-      Init_SHA512_sse4();
-      use_avxsse4 = true;
-      std::cout << "using SSE4" << std::endl;
-    } else if (mode_param == "sph") {
-      std::cout << "using SPHLIB" << std::endl;
-    } else {
-      std::cout << "invalid mode" << std::endl << std::endl;
-      print_help(argv[0]);
-      return EXIT_FAILURE;
-    }
-  } else {
-#ifdef	__x86_64__
-    processor_info_t proc_info;
-    cpuid_basic_identify(&proc_info);
-    if (proc_info.proc_type == PROC_X64_INTEL || proc_info.proc_type == PROC_X64_AMD) {
-      if (proc_info.avx_level > 0) {
-	Init_SHA512_avx();
-	use_avxsse4 = true;
-	std::cout << "using AVX" << std::endl;
-      } else if (proc_info.sse_level >= 4) {
-	Init_SHA512_sse4();
-	use_avxsse4 = true;
-	std::cout << "using SSE4" << std::endl;
-      } else
-	std::cout << "using SPHLIB (no avx/sse4)" << std::endl;
-    } else
-      std::cout << "using SPHLIB (unsupported arch)" << std::endl;
-#else
-    //TODO: make this compatible with 32bit systems
-    std::cout << "**** >>> WARNING" << std::endl;
-    std::cout << "**" << std::endl;
-    std::cout << "**" << "SSE4/AVX auto-detection not available on your machine" << std::endl;
-    std::cout << "**" << "please enable SSE4 or AVX manually" << std::endl;
-    std::cout << "**" << std::endl;
-    std::cout << "**** >>> WARNING" << std::endl;
-#endif
-  }
 
   t_start = boost::posix_time::second_clock::local_time();
   running = true;

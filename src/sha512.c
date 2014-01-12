@@ -116,7 +116,6 @@ bswap_64 (unsigned long long __x)
 
 #endif /* defined(__MINGW32__) || defined(__MINGW64__) */
 
-typedef void (*update_func_ptr)(const void *input_data, void *digest, uint64_t num_blks);
 
 static const uint8_t padding[SHA512_BLOCK_SIZE] = {
   0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -159,23 +158,6 @@ static const uint64_t iv256[SHA512_HASH_WORDS] = {
   0x0eb72ddc81c52ca2LL
 };
 
-static update_func_ptr sha512_update_func;
-static update_func_ptr sha512_update_single_func;
-
-void
-Init_SHA512_avx ()
-{
-	sha512_update_func = sha512_avx;
-	sha512_update_single_func = sha512_avx_single;
-}
-
-void
-Init_SHA512_sse4 ()
-{
-	sha512_update_func = sha512_sse4;
-	sha512_update_single_func = sha512_sse4;
-}
-
 static void
 _init (SHA512_Context *sc, const uint64_t iv[SHA512_HASH_WORDS])
 {
@@ -194,162 +176,6 @@ SHA512_Init (SHA512_Context *sc)
 	_init (sc, iv512);
 }
 
-void
-SHA512_Update (SHA512_Context *sc, const void *vdata, size_t len)
-{
-	const uint8_t *data = (const uint8_t *)vdata;
-	uint32_t bufferBytesLeft;
-	size_t bytesToCopy;
-	int rem;
-	uint64_t carryCheck;
-
-	if (sc->bufferLength) {
-		do {
-			bufferBytesLeft = SHA512_BLOCK_SIZE - sc->bufferLength;
-			bytesToCopy = bufferBytesLeft;
-			if (bytesToCopy > len)
-				bytesToCopy = len;
-
-			memcpy (&sc->buffer.bytes[sc->bufferLength], data, bytesToCopy);
-			carryCheck = sc->totalLength[1];
-			sc->totalLength[1] += bytesToCopy * 8L;
-			if (sc->totalLength[1] < carryCheck)
-				sc->totalLength[0]++;
-
-			sc->bufferLength += bytesToCopy;
-			data += bytesToCopy;
-			len -= bytesToCopy;
-
-			if (sc->bufferLength == SHA512_BLOCK_SIZE) {
-				sc->blocks = 1;
-				sha512_update_func(sc->buffer.words, sc->hash, sc->blocks);
-				sc->bufferLength = 0L;
-			} else {
-				return;
-			}
-		} while (len > 0 && len <= SHA512_BLOCK_SIZE);
-		if (!len) return;
-	}
-
-	sc->blocks = len >> 7;
-	rem = len - (sc->blocks << 7);
-	len = sc->blocks << 7;
-	carryCheck = sc->totalLength[1];
-	sc->totalLength[1] += rem * 8L;
-	if (sc->totalLength[1] < carryCheck)
-		sc->totalLength[0]++;
-
-	if (len) {
-		carryCheck = sc->totalLength[1];
-		sc->totalLength[1] += len * 8L;
-		if (sc->totalLength[1] < carryCheck)
-			sc->totalLength[0]++;
-		sha512_update_func((uint32_t *)data, sc->hash, sc->blocks);
-	}
-	if (rem) {
-		memcpy (&sc->buffer.bytes[0], data + len, rem);
-		sc->bufferLength = rem;
-	}
-}
-
-void
-SHA512_Mid_Update (SHA512_Context *sc, const void *vdata, size_t len)
-{
-	const uint8_t *data = (const uint8_t *)vdata;
-	uint32_t bufferBytesLeft;
-	size_t bytesToCopy;
-	int rem;
-	uint64_t carryCheck;
-
-	if (sc->bufferLength) {
-		do {
-			bufferBytesLeft = SHA512_BLOCK_SIZE - sc->bufferLength;
-			bytesToCopy = bufferBytesLeft;
-			if (bytesToCopy > len)
-				bytesToCopy = len;
-
-			memcpy (&sc->buffer.bytes[sc->bufferLength], data, bytesToCopy);
-			carryCheck = sc->totalLength[1];
-			sc->totalLength[1] += bytesToCopy * 8L;
-			if (sc->totalLength[1] < carryCheck)
-				sc->totalLength[0]++;
-
-			sc->bufferLength += bytesToCopy;
-			data += bytesToCopy;
-			len -= bytesToCopy;
-
-			if (sc->bufferLength == SHA512_BLOCK_SIZE) {
-				sc->blocks = 1;
-				sha512_update_func(sc->buffer.words, sc->hash, sc->blocks);
-				printf("midupdate called update func\n");
-				sc->bufferLength = 0L;
-			} else {
-				return;
-			}
-		} while (len > 0 && len <= SHA512_BLOCK_SIZE);
-		if (!len) return;
-	}
-
-	sc->blocks = len >> 7;
-	rem = len - (sc->blocks << 7);
-	len = sc->blocks << 7;
-	carryCheck = sc->totalLength[1];
-	sc->totalLength[1] += rem * 8L;
-	if (sc->totalLength[1] < carryCheck)
-		sc->totalLength[0]++;
-
-	if (len) {
-		carryCheck = sc->totalLength[1];
-		sc->totalLength[1] += len * 8L;
-		if (sc->totalLength[1] < carryCheck)
-			sc->totalLength[0]++;
-				printf("midupdate called update func 2\n");
-		sha512_update_func((uint32_t *)data, sc->hash, sc->blocks);
-	}
-	if (rem) {
-		memcpy (&sc->buffer.bytes[0], data + len, rem);
-		sc->bufferLength = rem;
-	}
-}
-
-
-static void
-_final (SHA512_Context *sc, uint8_t *hash, int hashWords, int halfWord)
-{
-	uint32_t bytesToPad;
-	uint64_t lengthPad[2];
-	int i;
-	
-	bytesToPad = 240L - sc->bufferLength;
-	if (bytesToPad > SHA512_BLOCK_SIZE)
-		bytesToPad -= SHA512_BLOCK_SIZE;
-	
-	lengthPad[0] = BYTESWAP64(sc->totalLength[0]);
-	lengthPad[1] = BYTESWAP64(sc->totalLength[1]);
-	
-	SHA512_Update (sc, padding, bytesToPad);
-	SHA512_Update (sc, lengthPad, 16L);
-	
-	if (hash) {
-		for (i = 0; i < hashWords; i++) {
-			*((uint64_t *) hash) = BYTESWAP64(sc->hash[i]);
-			hash += 8;
-		}
-		if (halfWord) {
-			hash[0] = (uint8_t) (sc->hash[i] >> 56);
-			hash[1] = (uint8_t) (sc->hash[i] >> 48);
-			hash[2] = (uint8_t) (sc->hash[i] >> 40);
-			hash[3] = (uint8_t) (sc->hash[i] >> 32);
-		}
-	}
-}
-
-void
-SHA512_Final (SHA512_Context *sc, uint8_t hash[SHA512_HASH_SIZE])
-{
-	_final (sc, hash, SHA512_HASH_WORDS, 0);
-}
-
 static const uint8_t finalpad[92] = {
 0x80, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 
 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 
@@ -365,7 +191,7 @@ static const uint8_t finalpad[92] = {
 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1, 0x20 /* 92 */
 };
 
-inline void
+void
 SHA512_Update_Simple (SHA512_Context *sc, const void *vdata, size_t len)
 {
         const uint8_t *data = (const uint8_t *)vdata;

@@ -214,9 +214,9 @@ void filter_and_rewrite_sha512_kernel(__restrict__ uint64_t *dev_hashes, const _
     uint64_t myword = dev_hashes[i*POOLSIZE+spot];
 
     if (myword && is_in_filter_twice(dev_countbits, (myword>>18))) {
-      myword = ((myword & (~(((1ULL<<26) - 1)))) | (spot*8+i));
       uint32_t result_slot = atomicInc((uint32_t *)dev_results, GPUHasher::N_RESULTS);
-      dev_results[result_slot+1] = myword;
+      dev_results[result_slot*2+1] = (myword >> 14); /* the actual momentum val */
+      dev_results[result_slot*2+2] = (spot*8+i);
     }
   }
 }
