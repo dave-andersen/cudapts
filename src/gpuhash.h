@@ -13,4 +13,10 @@ public:
   uint64_t *dev_hashes;
   uint32_t *dev_countbits;
   uint64_t *dev_results;
+
+  /* This is an opaque blob that holds a cudaStream_t, but is not
+   * exposed in the header so that the caller code does not need to
+   * include any cuda header files.
+   */
+  uint8_t opaqueStream_t[64];
 };

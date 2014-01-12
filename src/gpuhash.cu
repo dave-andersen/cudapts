@@ -31,6 +31,7 @@ int GPUHasher::Initialize() {
     exit(-1);
   }
 
+  cudaStream_t *streamptr = (cudaStream_t *)opaqueStream_t;
   error = cudaSetDeviceFlags(cudaDeviceScheduleBlockingSync);
 
   size_t free, total;
@@ -43,6 +44,8 @@ int GPUHasher::Initialize() {
     exit(-1);
     return -1;
   }
+
+  cudaStreamCreate(streamptr);
 
 #define MOMENTUM_N_HASHES (1<<26)
   /* Note:  This is the allocation size.  We can only use
@@ -83,6 +86,7 @@ GPUHasher::~GPUHasher() {
 
 int GPUHasher::ComputeHashes(uint64_t data[16], uint64_t *hashes) {
   cudaError_t error;
+  cudaStream_t *streamptr = (cudaStream_t *)opaqueStream_t;
   error = cudaMemcpy(dev_data, data, sizeof(uint64_t)*16, cudaMemcpyHostToDevice);
   if (error != cudaSuccess) {
     fprintf(stderr, "Could not memcpy dev_data (%d)\n", error);
@@ -94,21 +98,20 @@ int GPUHasher::ComputeHashes(uint64_t data[16], uint64_t *hashes) {
   // 1024 grid slots
 
   dim3 gridsize(4096,32);
-  cudaMemset(dev_results, 0, sizeof(uint64_t)*N_RESULTS);
-  cudaMemset(dev_countbits, 0, sizeof(uint32_t)*NUM_COUNTBITS_WORDS);
-  search_sha512_kernel<<<gridsize, 64>>>(dev_data, dev_hashes, dev_countbits);
-  filter_sha512_kernel<<<gridsize, 64>>>(dev_hashes, dev_countbits);
-  cudaMemset(dev_countbits, 0, sizeof(uint32_t)*NUM_COUNTBITS_WORDS);
-  populate_filter_kernel<<<gridsize, 64>>>(dev_hashes, dev_countbits);
-  filter_and_rewrite_sha512_kernel<<<gridsize, 64>>>(dev_hashes, dev_countbits, dev_results);
+  cudaMemsetAsync(dev_results, 0, sizeof(uint64_t)*N_RESULTS, *streamptr);
+  cudaMemsetAsync(dev_countbits, 0, sizeof(uint32_t)*NUM_COUNTBITS_WORDS, *streamptr);
+  search_sha512_kernel<<<gridsize, 64, 0, *streamptr>>>(dev_data, dev_hashes, dev_countbits);
+  filter_sha512_kernel<<<gridsize, 64, 0, *streamptr>>>(dev_hashes, dev_countbits);
+  cudaMemsetAsync(dev_countbits, 0, sizeof(uint32_t)*NUM_COUNTBITS_WORDS, *streamptr);
+  populate_filter_kernel<<<gridsize, 64, 0, *streamptr>>>(dev_hashes, dev_countbits);
+  filter_and_rewrite_sha512_kernel<<<gridsize, 64, 0, *streamptr>>>(dev_hashes, dev_countbits, dev_results);
+  error = cudaMemcpyAsync(hashes, dev_results, sizeof(uint64_t)*N_RESULTS, cudaMemcpyDeviceToHost, *streamptr);
 
   error = cudaDeviceSynchronize();
   if (error != cudaSuccess) {
     fprintf(stderr, "Error in kernel exec (%d)\n", error);
     return -1;
   }
-
-  error = cudaMemcpy(hashes, dev_results, sizeof(uint64_t)*N_RESULTS, cudaMemcpyDeviceToHost);
 
   if (error != cudaSuccess) {
     fprintf(stderr, "Could not memcpy dev_hashes out (%d)\n", error);
