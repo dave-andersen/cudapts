@@ -85,8 +85,6 @@ xLDFLAGS=$(LDHARDENING) $(LDFLAGS)
 
 OBJS= \
 	obj/cpuid.o \
-	obj/sha512_avx.o \
-	obj/sha512_sse4.o \
 	obj/sha512.o \
 	obj/sph_sha2.o \
 	obj/sph_sha2big.o \
@@ -100,9 +98,6 @@ obj/sph_%.o: sph_%.c
 	$(CXX) -c -O1 $(DEBUGFLAGS) -fpermissive -o $@ $<
 obj/%.o: %.c
 	$(CXX) -c -O2 $(DEBUGFLAGS) -fpermissive -o $@ $<
-
-obj/%.o: intel/%.asm
-	yasm -f $(YASMOUTPUT) -o $@ $<
 
 ptsminer: $(OBJS:obj/%=obj/%)
 	$(CXX) $(xLDFLAGS) -o $@ $(LIBPATHS) $^ $(LIBS)

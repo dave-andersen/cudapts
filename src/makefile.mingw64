@@ -44,8 +44,6 @@ LIBS += -l kernel32 -l user32 -l gdi32 -l comdlg32 -l winspool -l winmm -l shell
 
 OBJS= \
 	obj/cpuid.o \
-	obj/sha512_avx.o_asm \
-	obj/sha512_sse4.o_asm \
 	obj/sha512.o \
 	obj/sph_sha2.o \
 	obj/sph_sha2big.o \
@@ -112,9 +110,6 @@ obj/%.o_avx_intel: %.c
 #
 # ASM
 #
-obj/%.o_asm: intel/%.asm
-	yasm -f win64 -D WINABI -o $@ $<
-
 ptsminer_amd.exe: $(OBJS:obj/%.o=obj/%.o_amd)
 	$(CXX) $(CPPFLAGS) $(LDFLAGS) -o $@ $(LIBPATHS) $^ $(LIBS)
 ptsminer_intel.exe: $(OBJS:obj/%.o=obj/%.o_intel)

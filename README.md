@@ -24,19 +24,18 @@ To run, run:
 For most systems, it should work to simply run:
 
 ```
-    cudapts <payment-address>
+    cudapts <payment-address> 0
 ```
 
 But if you have multiple GPUs or it doesn't work, you might have to
 specify cudaDevice or shamode.
 
-You should expect to see anywhere from 200 c/m up to over 1000c/m on
+You should expect to see anywhere from 200 c/m up to over 1800c/m on
 high-end dual-core devices.
 
 Build notes:
 You must install:
  - libboost
- - yasm
  - nvcc and the nvidia libraries
 
 You must have nvcc in your path, and the nvidia libraries in your

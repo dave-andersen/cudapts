@@ -44,8 +44,6 @@ LIBS += -l kernel32 -l user32 -l gdi32 -l comdlg32 -l winspool -l winmm -l shell
 
 OBJS= \
 	obj/cpuid.o \
-	obj/sha512_avx.o \
-	obj/sha512_sse4.o \
 	obj/sha512.o \
 	obj/sph_sha2.o \
 	obj/sph_sha2big.o \
@@ -58,9 +56,6 @@ obj/%.o: %.cpp
 
 obj/%.o: %.c
 	$(CXX) -c -O2 -mtune=native -march=native -fpermissive -o $@ $<
-
-obj/%.o: intel/%.asm
-	yasm -f win32 -D WINABI -o $@ $<
 
 ptsminer.exe: $(OBJS:obj/%=obj/%)
 	$(CXX) $(CFLAGS) $(LDFLAGS) -o $@ $(LIBPATHS) $^ $(LIBS)
