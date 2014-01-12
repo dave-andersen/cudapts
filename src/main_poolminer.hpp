@@ -7,7 +7,7 @@
 #include <boost/asio.hpp>
 #include <boost/date_time/posix_time/posix_time_io.hpp>
 #include <cstring>
-#include <unordered_map>
+#include <boost/unordered_map.hpp>
 #include "gpuhash.h"
 //#include <libcuckoo/cuckoohash_map.hh>
 //#include <libcuckoo/city_hasher.hh>
@@ -156,12 +156,12 @@ void protoshares_process_512(blockHeader_t* block, CBlockProvider* bp, unsigned 
   *(uint32_t *)(&c512_avxsse.buffer.bytes[0]) = 0;
   _gpu->ComputeHashes((uint64_t *)c512_avxsse.buffer.bytes, hashblock);
   uint32_t n_hashes_plus_one = *((uint32_t *)hashblock);
-  std::unordered_map<uint64_t, uint32_t> resmap;
+  boost::unordered_map<uint64_t, uint32_t> resmap;
 
   for (uint32_t i = 0; i < (n_hashes_plus_one-1); i++) {
     uint64_t birthday = hashblock[1+i*2];
     uint32_t mine = hashblock[1+i*2+1];
-    std::unordered_map<uint64_t,uint32_t>::const_iterator r = resmap.find(birthday);
+    boost::unordered_map<uint64_t,uint32_t>::const_iterator r = resmap.find(birthday);
     if (r != resmap.end()) {
       uint32_t other = r->second;
       protoshares_revalidateCollision<shamode>(block, midHash+4, other, mine, birthday, bp, thread_id);
