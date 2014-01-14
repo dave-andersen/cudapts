@@ -109,7 +109,7 @@ int GPUHasher::ComputeHashes(uint64_t data[16], uint64_t *hashes) {
   // 128 blocks per grid entry
   // 1024 grid slots
 
-  dim3 gridsize(4096,64);
+  dim3 gridsize(4096,32);
   cudaMemsetAsync(dev_results, 0, sizeof(uint64_t)*N_RESULTS, *streamptr);
   cudaMemsetAsync(dev_countbits, 0, sizeof(uint32_t)*NUM_COUNTBITS_WORDS, *streamptr);
   search_sha512_kernel<<<gridsize, 64, 0, *streamptr>>>(dev_data, dev_hashes, dev_countbits);
