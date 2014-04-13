@@ -35,6 +35,14 @@ ifeq ($(linuxdist),redhat)
 	-l boost_thread-mt$(BOOST_LIB_SUFFIX)
 endif
 
+# Fedora doen't have boost_chrono, but doesn't need '-mt' appended like Red Hat
+ifeq ($(linuxdist),fedora)
+	BOOSTLIBOPTS=	-l boost_system$(BOOST_LIB_SUFFIX) \
+	-l boost_filesystem$(BOOST_LIB_SUFFIX) \
+	-l boost_program_options$(BOOST_LIB_SUFFIX) \
+	-l boost_thread$(BOOST_LIB_SUFFIX)
+endif
+
 # if Debian 6, link without lib_chrono, else use everything
 ifeq ($(linuxdist),debian)
 debian_version = $(shell cat /etc/debian_version | sed 's/\..*$$//g')
